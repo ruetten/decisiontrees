@@ -1,0 +1,6 @@
+Compile code with the following command:
+javac DecisionTree.java TreeNode.java
+
+Run the code with the following command:
+java DecisionTree
+(and then all the command line arguments work as they should)
