@@ -20,11 +20,13 @@ import sys
 import math
 
 class TreeNode:
-    def __init__(self, is_leaf=False, left_branch=None, right_branch=None, classification=-1):
+    def __init__(self, is_leaf=False, left_branch=None, right_branch=None, classification=-1, split_feature=-1, split_value=-1):
         self.is_leaf = is_leaf
         self.left_branch = left_branch
         self.right_branch = right_branch
         self.classification = classification
+        self.split_feature = split_feature
+        self.split_value = split_value
 
 def plurality_value(examples):
     print("plurality_value()")
@@ -87,15 +89,20 @@ def decision_tree_learning(examples, attributes, parent_examples):
 # CS760 Class notes code
 ################################################################################
 def sort_data_by_feature(D, x):
-    print("sort_data_by_feature()", x)
+    #print("sort_data_by_feature()", x)
     if len(D) <= 1:
         return D
     return D[D[:, x].argsort()]
 
 # Run this subroutine for each numeric feature at each node of DT induction
 def determine_candidate_numeric_splits(D, feature_labels): # set of training instances D, feature X
-    print("determine_candidate_numeric_splits()")
+    #print("determine_candidate_numeric_splits()")
     C = []
+
+    if len(D) <= 1:
+        #print("leaf node")
+        return C
+
     for Xi in feature_labels:
         D = sort_data_by_feature(D, Xi)
         for j in range(0, len(D)-1):
@@ -104,25 +111,33 @@ def determine_candidate_numeric_splits(D, feature_labels): # set of training ins
     return C
 
 def is_stopping_criteria_met(D, C):
-    print("is_stopping_criteria_met()")
-    met = len(D) <= 1
-    print(met)
+    #print("is_stopping_criteria_met()")
+    #print(C)
+    met = len(D) <= 1 or C == []
+    #print(met)
     return met
 
 def determine_classification(D):
     class_votes = [0, 0]
     for X in D:
-        print(get_classification(X))
         class_votes[get_classification(X)] = class_votes[get_classification(X)] + 1
-    return 0 if class_votes[0] >= class_votes[1] else 1
+    classification = 0 if class_votes[0] >= class_votes[1] else 1
+    #print("classification:", classification)
+    #print("\n -------------------\n")
+    return classification
 
 def info_gain(D, positive_split):
     # Calculate entropy
     entropy = 0
-    p = np.sum(D[:, -1]) # total classified as 1
+    p = D[:, -1].tolist().count(1) # total classified as 1
     N = len(D) # total
     n = N - p # total classified as 0
-    if n > 0:
+    #print(p, n, N)
+    if n == 0:
+        entropy = -(p / N)*math.log2(p / N)
+    elif p == 0:
+        entropy = -(n / N)*math.log2(n / N)
+    else:
         entropy = -(p / N)*math.log2(p / N)-(n / N)*math.log2(n / N)
 
     # Calculate Remainder
@@ -132,7 +147,12 @@ def info_gain(D, positive_split):
     for x in positive_split:
         p = p + get_classification(x) # 0 or 1
     n = N - p
-    if n > 0:
+    #print(p, n, N)
+    if n == 0:
+        remainder = -(p / N)*math.log2(p / N)
+    elif p == 0:
+        remainder = -(n / N)*math.log2(n / N)
+    else:
         remainder = -(p / N)*math.log2(p / N)-(n / N)*math.log2(n / N)
 
     # Calculate InfoGain
@@ -140,10 +160,12 @@ def info_gain(D, positive_split):
     return info_gain
 
 def find_best_split(D, C):
-    print("find_best_split()", C)
+    #print("find_best_split()", C)
     max_info_gain = sys.float_info.min
     best_S = [[],[]]
     best_c = -1
+    best_split_feature = -1
+    best_split_value = -1
     for c in range(0, len(C)):
         # Perform the split
         split_feature = C[c][0]
@@ -157,23 +179,28 @@ def find_best_split(D, C):
                 S_c[1].append(x)
 
         info_gain_c = info_gain(D, S_c[0])
+        #print("info_gain of", c, 'is', info_gain_c)
+        #print('max_info_gain', max_info_gain)
         if (info_gain_c > max_info_gain):
-             best_S = S_c
-             max_info_gain = info_gain_c
-             best_c = -1
-    print("best split was", best_c)
-    return best_S
+            best_S = S_c
+            max_info_gain = info_gain_c
+            best_split_feature = split_feature
+            best_split_value = split_value
+            best_c = c
+    #print("best split was", best_c)
+    return best_S, best_split_value, best_split_feature
 
 def make_subtree(D, feature_labels):
+    #print("making subtree with D\n", D, '', type(D),'\n:\n')
     C = determine_candidate_numeric_splits(D, feature_labels)
     if is_stopping_criteria_met(D, C):
-        print("reached a leaf node")
+        #print("reached a leaf node.")
         return TreeNode(is_leaf=True, classification=determine_classification(D))
     else:
-        S = find_best_split(D, C)
-        print("making 2 new subtrees with", S)
-        print()
-        return TreeNode(left_branch=make_subtree(S[0], feature_labels), right_branch=make_subtree(S[1], feature_labels))
+        S, split_value, split_feature = find_best_split(D, C)
+        #print("split_value, split_feature", split_value, split_feature)
+        #print("making 2 new subtrees with\n", S[0], '\n\n', S[1], '\n---\n')
+        return TreeNode(left_branch=make_subtree(np.array(S[0]), feature_labels), right_branch=make_subtree(np.array(S[1]), feature_labels), split_value=split_value, split_feature=split_feature)
 
 ################################################################################
 
@@ -200,12 +227,42 @@ def file_input(filename):
 
 ################################################################################
 
+def print_tree(level, tree):
+    if tree.is_leaf:
+        for i in range(0, level):
+            print("   |",end='')
+        print("  ",end='')
+        print("└──",end='')
+        print(tree.classification)
+    else:
+        for i in range(0, level):
+            print("   |",end='')
+        print("  ",end='')
+        print('x'+str(tree.split_feature),'>=',tree.split_value)
+
+        for i in range(0, level):
+            print("   |",end='')
+        print("  ",end='')
+        print("└──",end='')
+        print()
+        print_tree(level+1, tree.left_branch)
+
+        for i in range(0, level):
+            print("   |",end='')
+        print("  ",end='')
+        print("└──",end='')
+        print()
+        print_tree(level+1, tree.right_branch)
+
+debug = False
 if __name__ == "__main__":
-    D = file_input('data/Dmytest.txt')
+    D = file_input('data/D1.txt')
     D = np.array(D)
 
     feature_labels = [0, 1]
-    make_subtree(D, feature_labels)
+    tree = make_subtree(D, feature_labels)
+
+    print_tree(1, tree)
 
     #parent_examples = []
     #decision_tree_learning(examples, feature_labels, parent_examples)
