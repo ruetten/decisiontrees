@@ -225,7 +225,7 @@ def print_tree(level, tree):
 ################################################################################
 
 if __name__ == "__main__":
-    D = file_input('data/Dbig.txt')
+    D = file_input(sys.argv[1])
     D = np.array(D)
 
     # for x in sort_data_by_feature(D, 1):
