@@ -38,7 +38,7 @@ def sort_data_by_feature(D, x):
     return D[D[:, x].argsort()]
 
 # Run this subroutine for each numeric feature at each node of DT induction
-def determine_candidate_numeric_splits(D, feature_labels): # set of training instances D, feature X
+def determine_candidate_numeric_splits(D): # set of training instances D, feature X
     #########
     if DEBUG:
         print("determine_candidate_numeric_splits()")
@@ -49,7 +49,7 @@ def determine_candidate_numeric_splits(D, feature_labels): # set of training ins
         # Leaf node
         return C
 
-    for Xi in feature_labels:
+    for Xi in [0, 1]: # assuming only 2 features
         D = sort_data_by_feature(D, Xi)
         #########
         if DEBUG:
@@ -107,7 +107,7 @@ def determine_classification(D):
     if DEBUG:
         print(class_votes)
     #########
-    classification = 1 if class_votes[0] >= class_votes[1] else 0
+    classification = 1 if class_votes[1] >= class_votes[0] else 0
     #########
     if DEBUG:
         print("classification:", classification)
@@ -242,12 +242,12 @@ def find_best_split(D, C):
 
     return best_S, best_split_value, best_split_feature
 
-def make_subtree(D, feature_labels):
+def make_subtree(D):
     #########
     if DEBUG:
         print("making subtree with D\n", D, '', type(D),'\n:\n')
     #########
-    C = determine_candidate_numeric_splits(D, feature_labels)
+    C = determine_candidate_numeric_splits(D)
     if is_stopping_criteria_met(D, C):
         #########
         if DEBUG:
@@ -261,7 +261,7 @@ def make_subtree(D, feature_labels):
             print("split_value, split_feature", split_value, split_feature)
             print("making 2 new subtrees with\n", S[0], '\n\n', S[1], '\n---\n')
         #########
-        return TreeNode(left_branch=make_subtree(np.array(S[0]), feature_labels), right_branch=make_subtree(np.array(S[1]), feature_labels), split_value=split_value, split_feature=split_feature)
+        return TreeNode(left_branch=make_subtree(np.array(S[0])), right_branch=make_subtree(np.array(S[1])), split_value=split_value, split_feature=split_feature)
 
 ################################################################################
 
@@ -317,16 +317,8 @@ def print_tree(level, tree):
 DEBUG = False
 
 if __name__ == "__main__":
-    D = file_input(sys.argv[1])
-    D = np.array(D)
+    D = np.array(file_input(sys.argv[1]))
 
-    # for x in sort_data_by_feature(D, 1):
-    #     print(x)
-
-    feature_labels = [0, 1]
-    tree = make_subtree(D, feature_labels)
+    tree = make_subtree(D)
 
     print_tree(0, tree)
-
-    #parent_examples = []
-    #decision_tree_learning(examples, feature_labels, parent_examples)
