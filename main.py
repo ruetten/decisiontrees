@@ -87,7 +87,7 @@ def is_stopping_criteria_met(D, C):
     else:
         gain_ratios = []
         for c in range(0, len(C)):
-            gain_ratio, S_c, split_feature, split_value = get_gain_ratios_of_C(C, c, D)
+            gain_ratio, S, split_feature, split_value = get_gain_ratios_of_C(C[c], D)
             gain_ratios.append(gain_ratio)
         stop = gain_ratios.count(0) == len(gain_ratios) # all splits have zero gain ratio
     #########
@@ -176,36 +176,39 @@ def info_gain(D, S):
     info_gain = entropy - remainder
     return info_gain
 
-def get_gain_ratios_of_C(C, c, D):
+def split_data(C, D):
+    split_feature = C[0]
+    split_value = C[1][split_feature]
+    D = sort_data_by_feature(D, split_feature)
+    S = [[],[]]
+    for x in D:
+        if x[split_feature] >= split_value:
+            S[0].append(x)
+        else:
+            S[1].append(x)
+    return S
+
+def get_gain_ratios_of_C(C, D):
     #########
     if DEBUG:
         print('get_gain_ratios_of_C()')
     #########
-    # Perform the split
-    split_feature = C[c][0]
-    split_value = C[c][1][split_feature]
-    D = sort_data_by_feature(D, split_feature)
-    S_c = [[],[]]
-    for x in D:
-        if x[split_feature] >= split_value:
-            S_c[0].append(x)
-        else:
-            S_c[1].append(x)
+    S = split_data(C, D)
 
-    entropy_of_split = get_entropy(len(S_c[0]), len(S_c[1]), len(S_c[0]) + len(S_c[1]))
+    entropy_of_split = get_entropy(len(S[0]), len(S[1]), len(S[0]) + len(S[1]))
     #########
     if DEBUG:
         if entropy_of_split == 0:
-            print(C[c], ' ENTROPY IS 0')
-        print('S_c:',S_c)
+            print(C, ' ENTROPY IS 0')
+        print('S_c:',S)
     #########
-    info_gain_c = info_gain(D, S_c)
+    info_gain_c = info_gain(D, S)
 
     # skip if 0 split information
     gain_ratio = 0 if entropy_of_split == 0 \
         else info_gain_c / entropy_of_split
 
-    return gain_ratio, S_c, split_feature, split_value
+    return gain_ratio, S, C[0], C[1][C[0]]
 
 def find_best_split(D, C):
     #########
@@ -223,7 +226,7 @@ def find_best_split(D, C):
         if DEBUG:
             print('candidate:', C[c])
         #########
-        gain_ratio, S_c, split_feature, split_value = get_gain_ratios_of_C(C, c, D)
+        gain_ratio, S_c, split_feature, split_value = get_gain_ratios_of_C(C[c], D)
 
         if (gain_ratio > max_gain_ratio):
             best_S = S_c
