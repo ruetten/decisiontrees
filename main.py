@@ -51,6 +51,11 @@ def determine_candidate_numeric_splits(D, feature_labels): # set of training ins
 
     for Xi in feature_labels:
         D = sort_data_by_feature(D, Xi)
+        #########
+        if DEBUG:
+            for x in D:
+                print(x)
+        #########
         for j in range(0, len(D)-1):
             if get_classification(D[j]) != get_classification(D[j+1]):
                 C.append([Xi, D[j+1]])
@@ -197,7 +202,7 @@ def get_gain_ratios_of_C(C, c, D):
     info_gain_c = info_gain(D, S_c)
 
     # skip if 0 split information
-    gain_ratio = sys.float_info.min if entropy_of_split == 0 \
+    gain_ratio = 0 if entropy_of_split == 0 \
         else info_gain_c / entropy_of_split
 
     return gain_ratio, S_c, split_feature, split_value
@@ -275,7 +280,7 @@ def file_input(filename):
             break
 
         line_split = line.split()
-        D.append([float(line_split[0]), float(line_split[1]), int(line_split[2])])
+        D.append([float(line_split[0]), float(line_split[1]), int(float(line_split[2]))])
 
     file.close()
     return D
