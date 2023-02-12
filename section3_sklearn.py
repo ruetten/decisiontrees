@@ -33,9 +33,9 @@ Xtest = Dtest[:, :-1]
 ytest = Dtest[:, -1]
 
 tree.fit(Xtrain, ytrain)
-#print('n leaves:',tree.get_n_leaves())
+print('n leaves:',tree.get_n_leaves())
 
 score = tree.score(Xtest, ytest)
-#print('err:', 1-score)
+print('err:', 1-score)
 
 print(len(Dtrain),1-score)
