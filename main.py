@@ -29,60 +29,84 @@ def get_classification(example):
     return int(example[-1])
 
 def sort_data_by_feature(D, x):
-    #print("sort_data_by_feature()", x)
+    print("sort_data_by_feature()", x)
     if len(D) <= 1:
         return D
     return D[D[:, x].argsort()]
 
 # Run this subroutine for each numeric feature at each node of DT induction
 def determine_candidate_numeric_splits(D, feature_labels): # set of training instances D, feature X
-    #print("determine_candidate_numeric_splits()")
+    print("determine_candidate_numeric_splits()")
     C = []
 
     if len(D) <= 1:
-        #print("leaf node")
+        # Leaf node
         return C
 
     for Xi in feature_labels:
         D = sort_data_by_feature(D, Xi)
-        #for x in D:
-        #    print(x)
         for j in range(0, len(D)-1):
             if get_classification(D[j]) != get_classification(D[j+1]):
                 C.append([Xi, D[j+1]])
     return C
 
 def is_stopping_criteria_met(D, C):
-    #print("is_stopping_criteria_met()")
-    #for c in C:
-    #    print(c)
-    met = len(D) <= 1 or C == []
-    #print(met)
-    return met
+    print("is_stopping_criteria_met()")
+    for c in C:
+        print(c)
+
+    stop = False
+
+    # Covers all criteria:
+    # The stopping criteria (for making a node into a leaf) are that
+    # 1. the node is empty, or
+    # -- Should never occur because should never split a set into itself and the empty set
+    # -- Only occur as corner case of data is empty
+    # 2. all splits have zero gain ratio (if the entropy of the split is non-zero), or
+    # -- I do not know when this would occur when 3 does not occur, and 3 is covered
+    # 3. the entropy of any candidates split is zero
+    # -- Entropy is zero when all labels are the same, so when there are no candidate splits
+    if len(D) <= 1 or C == []:
+        stop = True
+
+    # Never occurs: all splits have zero gain ratio (if the entropy of the split is non-zero)
+    else:
+        gain_ratios = []
+        for c in range(0, len(C)):
+            gain_ratio, S_c, split_feature, split_value = get_gain_ratios_of_C(C, c, D)
+            gain_ratios.append(gain_ratio)
+        stop = gain_ratios.count(0) == len(gain_ratios) # all splits have zero gain ratio
+        print(stop)
+
+    print(stop)
+    return stop
 
 def determine_classification(D):
     class_votes = [0, 0]
     for X in D:
         class_votes[get_classification(X)] = class_votes[get_classification(X)] + 1
-    classification = 0 if class_votes[0] >= class_votes[1] else 1
-    #print("classification:", classification)
-    #print("\n -------------------\n")
+    print(class_votes)
+    classification = 1 if class_votes[0] >= class_votes[1] else 0
+    print("classification:", classification)
+    print("\n -------------------\n")
     return classification
 
 def get_entropy(p, n, N):
+    print('get_entropy()')
     if n == 0 or p == 0:
         return 0
     else:
         return -(p / N)*math.log2(p / N)-(n / N)*math.log2(n / N)
 
 def info_gain(D, S):
+    print('info_gain()')
     # Calculate entropy
     entropy = 0
     p = D[:, -1].tolist().count(1) # total classified as 1
     N = len(D) # total
     total_N = N
     n = N - p # total classified as 0
-    #print('entropy', p, n, N)
+    print('entropy', p, n, N)
     entropy = get_entropy(p, n, N)
 
     # Calculate Remainder
@@ -94,7 +118,7 @@ def info_gain(D, S):
     for x in S[0]:
         p = p + get_classification(x) # 0 or 1
     n = N - p
-    #print("true split", p, n, N)
+    print('true split', p, n, N)
     entropy_given_true = get_entropy(p, n, N)
 
     # false split
@@ -105,72 +129,74 @@ def info_gain(D, S):
     for x in S[1]:
         p = p + get_classification(x) # 0 or 1
     n = N - p
-    #print("false split", p, n, N)
+    print('false split', p, n, N)
     entropy_given_false = get_entropy(p, n, N)
 
     # Remainder
     remainder = (true_N / total_N)*entropy_given_true + (false_N / total_N)*entropy_given_false
-    #print('remainder', remainder)
 
     # Calculate InfoGain
     info_gain = entropy - remainder
     return info_gain
 
+def get_gain_ratios_of_C(C, c, D):
+    print('get_gain_ratios_of_C()')
+    # Perform the split
+    split_feature = C[c][0]
+    split_value = C[c][1][split_feature]
+    D = sort_data_by_feature(D, split_feature)
+    S_c = [[],[]]
+    for x in D:
+        print(x)
+        if x[split_feature] >= split_value:
+            S_c[0].append(x)
+        else:
+            S_c[1].append(x)
+
+    entropy_of_split = get_entropy(len(S_c[0]), len(S_c[1]), len(S_c[0]) + len(S_c[1]))
+
+    print('S_c:',S_c)
+    info_gain_c = info_gain(D, S_c)
+
+    gain_ratio = 0 if entropy_of_split == 0 else info_gain_c / entropy_of_split
+
+    return gain_ratio, S_c, split_feature, split_value
+
 def find_best_split(D, C):
-    #print("find_best_split()")
-    #for c in C:
-    #    print(c)
+    print('find_best_split()')
+    for c in C:
+        print(c)
     max_gain_ratio = sys.float_info.min
     best_S = [[],[]]
-    best_c = -1
     best_split_feature = -1
     best_split_value = -1
     for c in range(0, len(C)):
-        # Perform the split
-        split_feature = C[c][0]
-        split_value = C[c][1][split_feature]
-        D = sort_data_by_feature(D, split_feature)
-        S_c = [[],[]]
-        for x in D:
-            if x[split_feature] >= split_value:
-                S_c[0].append(x)
-            else:
-                S_c[1].append(x)
-
-        info_gain_c = info_gain(D, S_c)
-        #print("info_gain of", c, 'is', info_gain_c)
-
-        p = len(S_c[0])
-        n = len(S_c[1])
-        N = n + p
-        entropy_of_split = get_entropy(p, n, N)
-
-        gain_ratio = info_gain_c / entropy_of_split
+        print('candidate:', C[c])
+        gain_ratio, S_c, split_feature, split_value = get_gain_ratios_of_C(C, c, D)
 
         if (gain_ratio > max_gain_ratio):
             best_S = S_c
             max_gain_ratio = gain_ratio
             best_split_feature = split_feature
             best_split_value = split_value
-            best_c = c
 
-        #print("gain_ratio of", c, 'is', gain_ratio)
-        #print('max_gain_ratio', max_gain_ratio)
+        print("gain_ratio of", c, 'is', gain_ratio)
+        print('max_gain_ratio', max_gain_ratio)
+        print()
 
-        #print()
-    #print("best split was", best_c)
+    print('best: ', split_feature, split_value)
     return best_S, best_split_value, best_split_feature
 
 def make_subtree(D, feature_labels):
-    #print("making subtree with D\n", D, '', type(D),'\n:\n')
+    print("making subtree with D\n", D, '', type(D),'\n:\n')
     C = determine_candidate_numeric_splits(D, feature_labels)
     if is_stopping_criteria_met(D, C):
-        #print("reached a leaf node.")
+        print("reached a leaf node.")
         return TreeNode(is_leaf=True, classification=determine_classification(D))
     else:
         S, split_value, split_feature = find_best_split(D, C)
-        #print("split_value, split_feature", split_value, split_feature)
-        #print("making 2 new subtrees with\n", S[0], '\n\n', S[1], '\n---\n')
+        print("split_value, split_feature", split_value, split_feature)
+        print("making 2 new subtrees with\n", S[0], '\n\n', S[1], '\n---\n')
         return TreeNode(left_branch=make_subtree(np.array(S[0]), feature_labels), right_branch=make_subtree(np.array(S[1]), feature_labels), split_value=split_value, split_feature=split_feature)
 
 ################################################################################
