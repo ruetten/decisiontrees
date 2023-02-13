@@ -80,16 +80,16 @@ def is_stopping_criteria_met(D, C):
     # -- I do not know when this would occur when 3 does not occur, and 3 is covered
     # 3. the entropy of any candidates split is zero
     # -- Entropy is zero when all labels are the same, so when there are no candidate splits
-    if len(D) <= 1 or C == []:
+    if C == []:
         stop = True
 
     # Never occurs: all splits have zero gain ratio (if the entropy of the split is non-zero)
-    else:
-        gain_ratios = []
-        for c in range(0, len(C)):
-            gain_ratio, S, split_feature, split_value = get_gain_ratios_of_C(C[c], D)
-            gain_ratios.append(gain_ratio)
-        stop = gain_ratios.count(0) == len(gain_ratios) # all splits have zero gain ratio
+    # else:
+    #     gain_ratios = []
+    #     for c in range(0, len(C)):
+    #         gain_ratio, S, split_feature, split_value = get_gain_ratios_of_C(C[c], D)
+    #         gain_ratios.append(gain_ratio)
+    #     stop = gain_ratios.count(0) == len(gain_ratios) # all splits have zero gain ratio
     #########
         if DEBUG:
             print(stop)
@@ -279,6 +279,24 @@ def make_subtree(D, root=False):
         return TreeNode(left_branch=make_subtree(np.array(S[0])), right_branch=make_subtree(np.array(S[1])), split_value=split_value, split_feature=split_feature)
 
 ################################################################################
+def get_class_of_x_from_tree(tree, x):
+    if (tree.is_leaf):
+        return tree.classification
+    else:
+        if x[tree.split_feature] >= tree.split_value:
+            return get_class_of_x_from_tree(tree.left_branch, x)
+        else:
+            return get_class_of_x_from_tree(tree.right_branch, x)
+
+def test_tree(tree, D):
+    N = len(D)
+    num_correct = 0
+    for x in D:
+        if x[-1] == get_class_of_x_from_tree(tree, x):
+            num_correct = num_correct + 1
+    print(num_correct, '/', N)
+
+################################################################################
 
 def file_input(filename):
     D = []
@@ -316,14 +334,14 @@ def print_tree(level, tree):
         for i in range(0, level):
             print("   |",end='')
         print("  ",end='')
-        print("└──",end='')
+        print("└then ",end='')
         print()
         print_tree(level+1, tree.left_branch)
 
         for i in range(0, level):
             print("   |",end='')
         print("  ",end='')
-        print("└──",end='')
+        print("└else ",end='')
         print()
         print_tree(level+1, tree.right_branch)
 
@@ -335,5 +353,6 @@ if __name__ == "__main__":
     D = np.array(file_input(sys.argv[1]))
 
     tree = make_subtree(D)
-
     print_tree(0, tree)
+
+    test_tree(tree, D)
