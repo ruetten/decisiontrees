@@ -245,7 +245,19 @@ def find_best_split(D, C):
 
     return best_S, best_split_value, best_split_feature
 
-def make_subtree(D):
+def make_subtree(D, root=False):
+    # Section 2 question 3
+    if root:
+        C = determine_candidate_numeric_splits(D)
+        for c in C:
+            gain_ratio, S, split_feature, split_value = get_gain_ratios_of_C(c, D)
+            info_gain_c = info_gain(D, S)
+            print('candidate split: split on x%d >= %f' % (c[0], c[1][c[0]]), end='\t| ')
+            if gain_ratio == 0:
+                print('info_gain:', info_gain_c)
+            else:
+                print('gain_ratio:', gain_ratio)
+
     #########
     if DEBUG:
         print("making subtree with D\n", D, '', type(D),'\n:\n')
