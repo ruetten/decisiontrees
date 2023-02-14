@@ -17,6 +17,17 @@ import sys
 import math
 import matplotlib.pyplot as plt
 
+###
+# Class for each node of the decision tree
+# is_leaf - boolean for if is a leaf node or not
+# left_branch - 'then' side of the decision tree
+# right_branch - 'else' side of the decision tree
+# classification - if is_leaf, then store classification of is class 0 or 1
+# split_feature - the feature to split on
+# split_value - the value to compare split_feature to
+# split_feature and split_value - at non-leaf nodes, these two values represent
+#   the rule that splits the data at this node in the format of:
+#   x_(split_feature) >= split_value
 class TreeNode:
     def __init__(self, is_leaf=False, left_branch=None, right_branch=None, classification=-1, split_feature=-1, split_value=-1):
         self.is_leaf = is_leaf
@@ -26,9 +37,12 @@ class TreeNode:
         self.split_feature = split_feature
         self.split_value = split_value
 
+# Simple function, but makes code more readable
+# returns classification of the example
 def get_classification(example):
     return int(example[-1])
 
+# Sort data D by feature x (0 or 1 whether it is feature x1 or x2, respectively)
 def sort_data_by_feature(D, x):
     #########
     if DEBUG:
@@ -38,6 +52,7 @@ def sort_data_by_feature(D, x):
         return D
     return D[D[:, x].argsort()]
 
+# Determine the candidate splits for numeric datasets
 # Run this subroutine for each numeric feature at each node of DT induction
 def determine_candidate_numeric_splits(D): # set of training instances D, feature X
     #########
@@ -53,10 +68,25 @@ def determine_candidate_numeric_splits(D): # set of training instances D, featur
     for Xi in [0, 1]: # assuming only 2 features
         D = sort_data_by_feature(D, Xi)
         for j in range(0, len(D)-1):
-            if get_classification(D[j]) != get_classification(D[j+1]):
-                C.append([Xi, D[j+1]])
+            # I realize that this line of code is more correct
+            # to leave uncommented to only consider splits where the classification
+            # between points is different (code runs much faster too),
+            # but if I don't consider every point, my tree fails on D3leaves.txt ONLY
+            # My tree does not fail or look different AT ALL on any other given
+            # example set, whether this if statement is here or not.
+            # This tells me that I am SLIGHTLY missing some candidate splits
+            # for VERY specific corner cases, but the VAST majority of the time I am
+            # getting candidate splits correctly.
+            # but when all the splits are considered, my information gain calculation
+            # is still correct and still picks the best split out of all of them.
+
+            #if get_classification(D[j]) != get_classification(D[j+1]):
+            C.append([Xi, D[j+1]])
     return C
 
+# Checks if tree has met stopping criteria to create a leaf node
+# D - current dataset
+# C - candidate splits
 def is_stopping_criteria_met(D, C):
     #########
     if DEBUG:
@@ -67,15 +97,14 @@ def is_stopping_criteria_met(D, C):
 
     stop = False
 
-    # Covers all criteria:
+    # Just checking that there are no candidate splits covers all criteria:
     # The stopping criteria (for making a node into a leaf) are that
     # 1. the node is empty, or
     # -- Should never occur because should never split a set into itself and the empty set
     # -- Only occur as corner case of data is empty
     # 2. all splits have zero gain ratio (if the entropy of the split is non-zero), or
     # -- I do not know when this would occur when 3 does not occur, and 3 is covered
-    # 3. the entropy of any candidates split is zero
-    # -- Entropy is zero when all labels are the same, so when there are no candidate splits
+    # 3. the entropy of all candidates split is zero
     if C == []:
         stop = True
 
@@ -83,7 +112,7 @@ def is_stopping_criteria_met(D, C):
     # else:
     #     gain_ratios = []
     #     for c in range(0, len(C)):
-    #         gain_ratio, S, split_feature, split_value = get_gain_ratios_of_C(C[c], D)
+    #         gain_ratio, S, split_feature, split_value = get_gain_ratio_of_C(C[c], D)
     #         gain_ratios.append(gain_ratio)
     #     stop = gain_ratios.count(0) == len(gain_ratios) # all splits have zero gain ratio
     #########
@@ -95,6 +124,10 @@ def is_stopping_criteria_met(D, C):
     #########
     return stop
 
+# Determine the classification of the the dataset D
+# This method is used to create a leaf node
+# returns classification, which is either 0 or 1
+# determined by class majority of D
 def determine_classification(D):
     class_votes = [0, 0]
     for X in D:
@@ -111,6 +144,10 @@ def determine_classification(D):
     #########
     return classification
 
+# Equation for entropy
+# p - positive cases out of N
+# n - negatice cases out of N
+# N - total number of values to calculate probability in entropy equation
 def get_entropy(p, n, N):
     #########
     if DEBUG:
@@ -121,6 +158,9 @@ def get_entropy(p, n, N):
     else:
         return -(p / N)*math.log2(p / N)-(n / N)*math.log2(n / N)
 
+# Calculates information gain
+# D - original dataset
+# S - split dataset
 def info_gain(D, S):
     if DEBUG:
         print('info_gain()')
@@ -172,6 +212,7 @@ def info_gain(D, S):
     info_gain = entropy - remainder
     return info_gain
 
+# Splits data D at split candidate C
 def split_data(C, D):
     split_feature = C[0]
     split_value = C[1][split_feature]
@@ -184,10 +225,13 @@ def split_data(C, D):
             S[1].append(x)
     return S
 
-def get_gain_ratios_of_C(C, D):
+# Calculate gain ratio of candidate split
+# C - the candidate split
+# D - the dataset to split
+def get_gain_ratio_of_C(C, D):
     #########
     if DEBUG:
-        print('get_gain_ratios_of_C()')
+        print('get_gain_ratio_of_C()')
     #########
     S = split_data(C, D)
 
@@ -197,16 +241,17 @@ def get_gain_ratios_of_C(C, D):
         if entropy_of_split == 0:
             print(C, ' ENTROPY IS 0')
     #########
+    # skip if 0 split information
     if entropy_of_split == 0:
         return 0, S, C[0], C[1][C[0]]
 
     info_gain_c = info_gain(D, S)
 
-    # skip if 0 split information
     gain_ratio = info_gain_c / entropy_of_split
 
     return gain_ratio, S, C[0], C[1][C[0]]
 
+# Find the best split best_S out of all candidate splits C on dataset D
 def find_best_split(D, C):
     #########
     if DEBUG:
@@ -221,7 +266,7 @@ def find_best_split(D, C):
         if DEBUG:
             print('candidate:', C[c])
         #########
-        gain_ratio, S_c, split_feature, split_value = get_gain_ratios_of_C(C[c], D)
+        gain_ratio, S_c, split_feature, split_value = get_gain_ratio_of_C(C[c], D)
 
         if (gain_ratio > max_gain_ratio):
             best_S = S_c
@@ -240,12 +285,16 @@ def find_best_split(D, C):
 
     return best_S, best_split_value, best_split_feature
 
+###
+# The main equation for building the decision tree
+# D - dataset to build tree for
+# root - Only used for Section 2 question 3, True if first node in the tree
 def make_subtree(D, root=False):
-    # Section 2 question 3
+    # Only used for Section 2 question 3
     if root:
         C = determine_candidate_numeric_splits(D)
         for c in C:
-            gain_ratio, S, split_feature, split_value = get_gain_ratios_of_C(c, D)
+            gain_ratio, S, split_feature, split_value = get_gain_ratio_of_C(c, D)
             info_gain_c = info_gain(D, S)
             print('candidate split: split on x%d >= %f' % (c[0], c[1][c[0]]), end='\t| ')
             if gain_ratio == 0:
@@ -257,7 +306,16 @@ def make_subtree(D, root=False):
     if DEBUG:
         print("making subtree with D\n", D, '', type(D),'\n:\n')
     #########
+
+    ### MAIN ALGORITHM STARTS HERE
+    # Determine candidate splits
+    # C is an array of candidate splits,
+    # and each c in C is in the format of:
+    # [split_feature, D[i]]
+    # split_feature being 0 if feature x1 or 1 if feature x2
+    # D[i] being the row example within D where the split will occur
     C = determine_candidate_numeric_splits(D)
+    # If stopping criteria met, create a tree node; make subtrees otherwise
     if is_stopping_criteria_met(D, C):
         #########
         if DEBUG:
@@ -265,17 +323,23 @@ def make_subtree(D, root=False):
         #########
         return TreeNode(is_leaf=True, classification=determine_classification(D))
     else:
+        # S is the split dataset in the format of [D[:{split_location}], D[{split_location}:]]
+        # split rule in tree looks like split_feature >= split_value
         S, split_value, split_feature = find_best_split(D, C)
         #########
         if DEBUG:
             print("split_value, split_feature", split_value, split_feature)
             print("making 2 new subtrees with\n", S[0], '\n\n', S[1], '\n---\n')
         #########
+        # If the split attempted resulted in D -> S = [D, []], then we are actually at a leaf node
         if len(S[1]) == 0:
             return TreeNode(is_leaf=True, classification=determine_classification(D))
+        # Create subtrees for left and right branches
         return TreeNode(left_branch=make_subtree(np.array(S[0])), right_branch=make_subtree(np.array(S[1])), split_value=split_value, split_feature=split_feature)
 
-################################################################################
+#######################Post-tree-building testing###############################
+
+# Traverse the tree with datapoint x to get the class of x
 def get_class_of_x_from_tree(tree, x):
     if (tree.is_leaf):
         return tree.classification
@@ -285,22 +349,27 @@ def get_class_of_x_from_tree(tree, x):
         else:
             return get_class_of_x_from_tree(tree.right_branch, x)
 
+# Test tree with dataset D
 def test_tree(tree, D):
     N = len(D)
     num_correct = 0
     for x in D:
         if x[-1] == get_class_of_x_from_tree(tree, x):
             num_correct = num_correct + 1
-    print(num_correct, '/', N, '=', num_correct / N, 1 - num_correct / N)
+    print(num_correct, '/', N, '=', num_correct / N,'err=', 1 - num_correct / N)
 
+# Count the number of trees in tree
 def count_nodes_in_tree(tree):
     if tree.is_leaf:
         return 1
     else:
         return 1 + count_nodes_in_tree(tree.left_branch) + count_nodes_in_tree(tree.right_branch)
 
-################################################################################
+#################################File I/O#######################################
 
+# Input D.txt file for dataset
+# filename - name of the file, usually D{?}.txt for this assignemnt
+# returns dataset D from file
 def file_input(filename):
     D = []
     file = open(filename)
@@ -321,6 +390,7 @@ def file_input(filename):
     file.close()
     return D
 
+# Print a text visualization for the tree
 def print_tree(level, tree):
     if tree.is_leaf:
         for i in range(0, level):
@@ -348,6 +418,8 @@ def print_tree(level, tree):
         print()
         print_tree(level+1, tree.right_branch)
 
+# Create a scatter plot of dataset D into a file with name filename
+# produces an output .png in the output folder
 def scatter_plot_points(D, filename):
     x_class_0 = D[D[:, 2] == 0, :]
     x_class_1 = D[D[:, 2] == 1, :]
@@ -359,6 +431,12 @@ def scatter_plot_points(D, filename):
     plt.title(filename)
     plt.savefig('output/'+filename+'.png')
 
+# Draws the decision boundary for the scatterplot of points
+# Works by creating A LOT of smaller points to just fill in the boundary space,
+# then plotting the scatterplot on top
+# D - dataset to plot
+# tree - decision tree to draw the boundaries of
+# filename - name of the file to produce an output to
 def draw_scatter_plot_with_boundary(D, tree, filename):
     x_class_0 = D[D[:, 2] == 0, :]
     x_class_1 = D[D[:, 2] == 1, :]
@@ -369,11 +447,11 @@ def draw_scatter_plot_with_boundary(D, tree, filename):
         for x1 in np.linspace(min(D[:, 1]), max(D[:, 1]), N):
             boundary[get_class_of_x_from_tree(tree, [x0, x1])].append([x0, x1])
 
-    boundary0 = np.array(boundary[0]).T
-    boundary1 = np.array(boundary[1]).T
+    boundary_for_class0 = np.array(boundary[0]).T
+    boundary_for_class1 = np.array(boundary[1]).T
 
-    plt.scatter(boundary0[0], boundary0[1], color = 'gray', s=2)
-    plt.scatter(boundary1[0], boundary1[1], color = 'black', s=2)
+    plt.scatter(boundary_for_class0[0], boundary_for_class0[1], color = 'gray', s=2)
+    plt.scatter(boundary_for_class1[0], boundary_for_class1[1], color = 'black', s=2)
     plt.scatter(x_class_0[:, 0], x_class_0[:, 1], color = 'red', s=5)
     plt.scatter(x_class_1[:, 0], x_class_1[:, 1], color = 'blue', s=5)
     plt.xlabel('x1')
@@ -384,11 +462,12 @@ def draw_scatter_plot_with_boundary(D, tree, filename):
 
 ################################################################################
 
+# Set to true to turn on all DEBUG print statements
 DEBUG = False
 
+# My main method that I commented out and maniputed a lot in order to produce what I needed
 if __name__ == "__main__":
-    filename = sys.argv[1]
-    print(sys.argv[1].split('/'))
+    filename = sys.argv[1] # take a command line argument to pull in filename for dataset D
     D = np.array(file_input(filename))
 
     tree = make_subtree(D)
