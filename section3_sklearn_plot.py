@@ -21,11 +21,11 @@ def file_input(filename):
     file.close()
     return D
 
-D = file_input('section2_sklearn_n_vs_err.txt')
+D = file_input('question7_n_vs_err.txt')
 D = np.array(D)
 D = np.transpose(D)
 
-plt.plot(D[0], 100*D[1])
+plt.plot(D[0], D[1])
 plt.title('n vs err')
 plt.xlabel('n')
 plt.ylabel('err_n (%)')

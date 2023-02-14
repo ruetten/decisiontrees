@@ -15,6 +15,7 @@
 import numpy as np
 import sys
 import math
+import matplotlib.pyplot as plt
 
 class TreeNode:
     def __init__(self, is_leaf=False, left_branch=None, right_branch=None, classification=-1, split_feature=-1, split_value=-1):
@@ -51,11 +52,6 @@ def determine_candidate_numeric_splits(D): # set of training instances D, featur
 
     for Xi in [0, 1]: # assuming only 2 features
         D = sort_data_by_feature(D, Xi)
-        #########
-        if DEBUG:
-            for x in D:
-                print(x)
-        #########
         for j in range(0, len(D)-1):
             if get_classification(D[j]) != get_classification(D[j+1]):
                 C.append([Xi, D[j+1]])
@@ -200,13 +196,14 @@ def get_gain_ratios_of_C(C, D):
     if DEBUG:
         if entropy_of_split == 0:
             print(C, ' ENTROPY IS 0')
-        print('S_c:',S)
     #########
+    if entropy_of_split == 0:
+        return 0, S, C[0], C[1][C[0]]
+
     info_gain_c = info_gain(D, S)
 
     # skip if 0 split information
-    gain_ratio = 0 if entropy_of_split == 0 \
-        else info_gain_c / entropy_of_split
+    gain_ratio = info_gain_c / entropy_of_split
 
     return gain_ratio, S, C[0], C[1][C[0]]
 
@@ -214,8 +211,6 @@ def find_best_split(D, C):
     #########
     if DEBUG:
         print('find_best_split()')
-        for c in C:
-            print(c)
     #########
     max_gain_ratio = sys.float_info.min
     best_S = [[],[]]
@@ -276,6 +271,8 @@ def make_subtree(D, root=False):
             print("split_value, split_feature", split_value, split_feature)
             print("making 2 new subtrees with\n", S[0], '\n\n', S[1], '\n---\n')
         #########
+        if len(S[1]) == 0:
+            return TreeNode(is_leaf=True, classification=determine_classification(D))
         return TreeNode(left_branch=make_subtree(np.array(S[0])), right_branch=make_subtree(np.array(S[1])), split_value=split_value, split_feature=split_feature)
 
 ################################################################################
@@ -294,7 +291,13 @@ def test_tree(tree, D):
     for x in D:
         if x[-1] == get_class_of_x_from_tree(tree, x):
             num_correct = num_correct + 1
-    print(num_correct, '/', N)
+    print(num_correct, '/', N, '=', num_correct / N, 1 - num_correct / N)
+
+def count_nodes_in_tree(tree):
+    if tree.is_leaf:
+        return 1
+    else:
+        return 1 + count_nodes_in_tree(tree.left_branch) + count_nodes_in_tree(tree.right_branch)
 
 ################################################################################
 
@@ -345,14 +348,54 @@ def print_tree(level, tree):
         print()
         print_tree(level+1, tree.right_branch)
 
+def scatter_plot_points(D, filename):
+    x_class_0 = D[D[:, 2] == 0, :]
+    x_class_1 = D[D[:, 2] == 1, :]
+    plt.scatter(x_class_0[:, 0], x_class_0[:, 1], color = 'red')
+    plt.scatter(x_class_1[:, 0], x_class_1[:, 1], color = 'blue')
+    plt.xlabel('x1')
+    plt.ylabel('x2')
+    plt.legend(['0', '1'])
+    plt.title(filename)
+    plt.savefig('output/'+filename+'.png')
+
+def draw_scatter_plot_with_boundary(D, tree, filename):
+    x_class_0 = D[D[:, 2] == 0, :]
+    x_class_1 = D[D[:, 2] == 1, :]
+
+    N = 200
+    boundary = [[],[]]
+    for x0 in np.linspace(min(D[:, 0]), max(D[:, 0]), N):
+        for x1 in np.linspace(min(D[:, 1]), max(D[:, 1]), N):
+            boundary[get_class_of_x_from_tree(tree, [x0, x1])].append([x0, x1])
+
+    boundary0 = np.array(boundary[0]).T
+    boundary1 = np.array(boundary[1]).T
+
+    plt.scatter(boundary0[0], boundary0[1], color = 'gray', s=2)
+    plt.scatter(boundary1[0], boundary1[1], color = 'black', s=2)
+    plt.scatter(x_class_0[:, 0], x_class_0[:, 1], color = 'red', s=5)
+    plt.scatter(x_class_1[:, 0], x_class_1[:, 1], color = 'blue', s=5)
+    plt.xlabel('x1')
+    plt.ylabel('x2')
+    plt.legend(['0', '1'])
+    plt.title(filename)
+    plt.savefig('output/'+filename+'.png')
+
 ################################################################################
 
 DEBUG = False
 
 if __name__ == "__main__":
-    D = np.array(file_input(sys.argv[1]))
+    filename = sys.argv[1]
+    print(sys.argv[1].split('/'))
+    D = np.array(file_input(filename))
 
     tree = make_subtree(D)
     print_tree(0, tree)
+    #scatter_plot_points(D, sys.argv[1].split('/')[-1])
+    draw_scatter_plot_with_boundary(D, tree, sys.argv[1].split('/')[-1])
 
+    print('num nodes =', count_nodes_in_tree(tree))
+    #test_tree(tree, np.array(file_input('data/Dtest.txt')))
     test_tree(tree, D)
