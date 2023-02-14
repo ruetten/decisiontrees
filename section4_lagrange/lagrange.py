@@ -4,12 +4,11 @@ from scipy.interpolate import lagrange
 from numpy.polynomial.polynomial import Polynomial
 import matplotlib.pyplot as plt
 
-n = 20
+n = 10
 a = 0
 b = 2*math.pi
 x = np.random.uniform(a,b,size=n)
-
-y = np.sin(x)
+y = np.sin(x) + np.random.normal(0, 1, n)
 
 poly = lagrange(x,y)
 
