@@ -402,7 +402,7 @@ def print_tree(level, tree):
         for i in range(0, level):
             print("   |",end='')
         print("  ",end='')
-        print('x'+str(tree.split_feature),'>=',tree.split_value)
+        print('x'+str(tree.split_feature+1),'>=',tree.split_value)
 
         for i in range(0, level):
             print("   |",end='')
@@ -417,6 +417,25 @@ def print_tree(level, tree):
         print("└else ",end='')
         print()
         print_tree(level+1, tree.right_branch)
+
+def print_tree_python_code(level, tree):
+    if tree.is_leaf:
+        for i in range(0, level):
+            print("\t",end='')
+        print(tree.classification)
+    else:
+        for i in range(0, level):
+            print("\t",end='')
+        print('if x'+str(tree.split_feature+1),'>=',tree.split_value, ':')
+
+        for i in range(0, level):
+            print("\t",end='')
+        print_tree_python_code(level+1, tree.left_branch)
+
+        for i in range(0, level):
+            print("\t",end='')
+        print("else:")
+        print_tree_python_code(level+1, tree.right_branch)
 
 # Create a scatter plot of dataset D into a file with name filename
 # produces an output .png in the output folder
@@ -471,7 +490,8 @@ if __name__ == "__main__":
     D = np.array(file_input(filename))
 
     tree = make_subtree(D)
-    print_tree(0, tree)
+    #print_tree(0, tree)
+    print_tree_python_code(0, tree)
     #scatter_plot_points(D, sys.argv[1].split('/')[-1])
     draw_scatter_plot_with_boundary(D, tree, sys.argv[1].split('/')[-1])
 
