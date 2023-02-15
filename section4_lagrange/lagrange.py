@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 n = 10
 a = 0
 b = 2*math.pi
-x = np.random.uniform(a,b,size=n)
-y = np.sin(x) + np.random.normal(0, 1, n)
+x = np.linspace(a,b,n) + np.random.normal(0, 1, n)
+y = np.sin(x)
 
 poly = lagrange(x,y)
 
@@ -19,5 +19,11 @@ step = 0.1
 x_new = np.arange(min(x), max(x)+step, step)
 
 plt.scatter(x, y, label='data')
-plt.plot(x_new, Polynomial(poly.coef[::-1])(x_new), label='Polynomial')
+y_new = Polynomial(poly.coef[::-1])(x_new)
+plt.plot(x_new, y_new, label='Polynomial')
 plt.savefig('section4_lagrange/lagrange_plot.png')
+
+sum = 0
+for x in x_new:
+    sum = sum + abs(math.sin(x) - Polynomial(poly.coef[::-1])(x))
+print(sum)

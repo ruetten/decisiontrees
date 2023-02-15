@@ -68,20 +68,14 @@ def determine_candidate_numeric_splits(D): # set of training instances D, featur
     for Xi in [0, 1]: # assuming only 2 features
         D = sort_data_by_feature(D, Xi)
         for j in range(0, len(D)-1):
-            # I realize that this line of code is more correct
-            # to leave uncommented to only consider splits where the classification
-            # between points is different (code runs much faster too),
-            # but if I don't consider every point, my tree fails on D3leaves.txt ONLY
-            # My tree does not fail or look different AT ALL on any other given
-            # example set, whether this if statement is here or not.
-            # This tells me that I am SLIGHTLY missing some candidate splits
-            # for VERY specific corner cases, but the VAST majority of the time I am
-            # getting candidate splits correctly.
-            # but when all the splits are considered, my information gain calculation
-            # is still correct and still picks the best split out of all of them.
-
-            #if get_classification(D[j]) != get_classification(D[j+1]):
-            C.append([Xi, D[j+1]])
+            if get_classification(D[j]) != get_classification(D[j+1]):
+                C.append([Xi, D[j+1]])
+                # Handles the case that the sorted dataset could have the same values
+                if D[j, Xi] == D[j+1, Xi]:
+                    for k in range(j+1, len(D)-1):
+                        if D[k, Xi] == D[k+1, Xi]:
+                            C.append([Xi, D[k+1]])
+                            continue
     return C
 
 # Checks if tree has met stopping criteria to create a leaf node
@@ -108,13 +102,6 @@ def is_stopping_criteria_met(D, C):
     if C == []:
         stop = True
 
-    # Never occurs: all splits have zero gain ratio (if the entropy of the split is non-zero)
-    # else:
-    #     gain_ratios = []
-    #     for c in range(0, len(C)):
-    #         gain_ratio, S, split_feature, split_value = get_gain_ratio_of_C(C[c], D)
-    #         gain_ratios.append(gain_ratio)
-    #     stop = gain_ratios.count(0) == len(gain_ratios) # all splits have zero gain ratio
     #########
         if DEBUG:
             print(stop)
@@ -296,7 +283,7 @@ def make_subtree(D, root=False):
         for c in C:
             gain_ratio, S, split_feature, split_value = get_gain_ratio_of_C(c, D)
             info_gain_c = info_gain(D, S)
-            print('candidate split: split on x%d >= %f' % (c[0], c[1][c[0]]), end='\t| ')
+            print('candidate split: split on x%d >= %f' % (c[0]+1, c[1][c[0]]), end='\t| ')
             if gain_ratio == 0:
                 print('info_gain:', info_gain_c)
             else:
@@ -418,25 +405,6 @@ def print_tree(level, tree):
         print()
         print_tree(level+1, tree.right_branch)
 
-def print_tree_python_code(level, tree):
-    if tree.is_leaf:
-        for i in range(0, level):
-            print("\t",end='')
-        print(tree.classification)
-    else:
-        for i in range(0, level):
-            print("\t",end='')
-        print('if x'+str(tree.split_feature+1),'>=',tree.split_value, ':')
-
-        for i in range(0, level):
-            print("\t",end='')
-        print_tree_python_code(level+1, tree.left_branch)
-
-        for i in range(0, level):
-            print("\t",end='')
-        print("else:")
-        print_tree_python_code(level+1, tree.right_branch)
-
 # Create a scatter plot of dataset D into a file with name filename
 # produces an output .png in the output folder
 def scatter_plot_points(D, filename):
@@ -490,10 +458,9 @@ if __name__ == "__main__":
     D = np.array(file_input(filename))
 
     tree = make_subtree(D)
-    #print_tree(0, tree)
-    print_tree_python_code(0, tree)
+    print_tree(0, tree)
     #scatter_plot_points(D, sys.argv[1].split('/')[-1])
-    draw_scatter_plot_with_boundary(D, tree, sys.argv[1].split('/')[-1])
+    #draw_scatter_plot_with_boundary(D, tree, sys.argv[1].split('/')[-1])
 
     print('num nodes =', count_nodes_in_tree(tree))
     #test_tree(tree, np.array(file_input('data/Dtest.txt')))
